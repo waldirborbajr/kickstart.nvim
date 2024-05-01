@@ -91,7 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -142,8 +142,8 @@ vim.opt.splitbelow = true
 -- Sets how neovim will display certain whitespace characters in the editor.
 --  See `:help 'list'`
 --  and `:help 'listchars'`
-vim.opt.list = true
-vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
+-- vim.opt.list = true
+-- vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
 -- Preview substitutions live, as you type!
 vim.opt.inccommand = 'split'
@@ -154,12 +154,39 @@ vim.opt.cursorline = true
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 10
 
+-- indent
+vim.opt.tabstop = 2
+vim.opt.softtabstop = 2
+vim.opt.shiftwidth = 2
+vim.opt.expandtab = true
+vim.opt.smartindent = true
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.hlsearch = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+
+-- Custom keymaps
+vim.keymap.set('n', '!!', ':qa!<enter>', { desc = '' })
+vim.keymap.set('n', 'QQ', ':q!<enter>', { desc = '' })
+vim.keymap.set('n', '<leader>qq', '<cmd>qa<cr>', { desc = 'Quit all' })
+vim.keymap.set('n', 'WW', ':w!<enter>', { desc = '' })
+vim.keymap.set('n', 'E', '$', { desc = '' })
+vim.keymap.set('n', 'B', '^', { desc = '' })
+vim.keymap.set('n', 'td', ':TodoTelescope<CR>', { desc = '' })
+vim.keymap.set('n', '<leader>rs', ':%s/', { desc = '' })
+vim.keymap.set('n', '<leader>rw', ':%s/<<C-r><C-w>>/<C-r><C-w>/gI<Left><Left><Left>', { desc = '' })
+vim.keymap.set('n', 'gh', '<cmd>OpenGithubRepo<cr>', { desc = '' })
+-- Escape in insert mode
+vim.keymap.set('i', 'jj', '<esc>')
+vim.keymap.set('i', 'jk', '<esc>')
+-- Custom navigation
+vim.keymap.set('n', '<C-d>', '<C-d>zz', { desc = '' })
+vim.keymap.set('n', '<C-u>', '<C-u>zz', { desc = '' })
+vim.keymap.set('n', '<C-f>', '<C-f>zz', { desc = '' })
+vim.keymap.set('n', '<C-b>', '<C-b>zz', { desc = '' })
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
@@ -202,6 +229,24 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function()
     vim.highlight.on_yank()
   end,
+})
+
+-- Disable continuation comment on next line
+vim.api.nvim_create_autocmd('User', {
+  desc = 'no auto comment after pressing o',
+  pattern = '*',
+  command = 'setlocal formatoptions-=cro',
+})
+
+-- Open Github repository
+vim.api.nvim_create_user_command('OpenGithubRepo', function(_)
+  local ghpath = vim.api.nvim_eval "shellescape(expand('<cfile>'))"
+  local formatpath = ghpath:sub(2, #ghpath - 1)
+  local repourl = 'https://www.github.com/' .. formatpath
+  vim.fn.system { 'xdg-open', repourl }
+end, {
+  desc = 'Open Github Repo',
+  force = true,
 })
 
 -- [[ Install `lazy.nvim` plugin manager ]]
@@ -592,6 +637,8 @@ require('lazy').setup({
             },
           },
         },
+
+        gopls = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -658,6 +705,17 @@ require('lazy').setup({
         -- You can use a sub-list to tell conform to run *until* a formatter
         -- is found.
         -- javascript = { { "prettierd", "prettier" } },
+        go = { 'goimports', 'gofumpt' },
+        -- markdown = { 'prettier' },
+        -- json = { 'prettierd' },
+        -- yaml = { 'prettierd' },
+        -- rust = { 'rustfmt' },
+        -- toml = { 'taplo' },
+        sh = { 'shfmt' },
+        -- python = { 'black' },
+        zsh = { 'shfmt' },
+        bash = { 'shfmt' },
+        ['*'] = { 'trim_whitespace', 'trim_newlines' },
       },
     },
   },
@@ -731,6 +789,8 @@ require('lazy').setup({
           --  This will expand snippets if the LSP sent a snippet.
           ['<C-y>'] = cmp.mapping.confirm { select = true },
 
+          ['<CR>'] = cmp.mapping.confirm { select = true },
+
           -- If you prefer more traditional completion keymaps,
           -- you can uncomment the following lines
           --['<CR>'] = cmp.mapping.confirm { select = true },
@@ -773,18 +833,39 @@ require('lazy').setup({
     end,
   },
 
+  -- { -- You can easily change to a different colorscheme.
+  --   -- Change the name of the colorscheme plugin below, and then
+  --   -- change the command in the config to whatever the name of that colorscheme is.
+  --   --
+  --   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
+  --   'folke/tokyonight.nvim',
+  --   priority = 1000, -- Make sure to load this before all the other start plugins.
+  --   init = function()
+  --     -- Load the colorscheme here.
+  --     -- Like many other themes, this one has different styles, and you could load
+  --     -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
+  --     vim.cmd.colorscheme 'tokyonight-night'
+  --
+  --     -- You can configure highlights by doing something like:
+  --     vim.cmd.hi 'Comment gui=none'
+  --   end,
+  -- },
+
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
+    -- 'folke/tokyonight.nvim',
+    'catppuccin/nvim',
+    enabled = true,
     priority = 1000, -- Make sure to load this before all the other start plugins.
     init = function()
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      -- vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'catppuccin-mocha'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
@@ -835,7 +916,7 @@ require('lazy').setup({
     'nvim-treesitter/nvim-treesitter',
     build = ':TSUpdate',
     opts = {
-      ensure_installed = { 'bash', 'c', 'html', 'lua', 'luadoc', 'markdown', 'vim', 'vimdoc' },
+      ensure_installed = { 'bash', 'lua', 'luadoc', 'markdown', 'vim', 'vimdoc', 'go', 'gomod', 'gowork', 'gosum' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -876,7 +957,7 @@ require('lazy').setup({
   -- require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
-  -- require 'kickstart.plugins.autopairs',
+  require 'kickstart.plugins.autopairs',
   -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
@@ -885,7 +966,7 @@ require('lazy').setup({
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
   --    For additional information, see `:help lazy.nvim-lazy.nvim-structuring-your-plugins`
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
 }, {
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
